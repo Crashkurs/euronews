@@ -13,6 +13,7 @@ datetimerange = "*"
 schedule = "*"
 lxml = "*"
 pytube3 = "*"
+tinydb = "*"
 
 [requires]
 python_version = "3.8"

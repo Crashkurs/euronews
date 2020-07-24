@@ -2,6 +2,7 @@ from txrequests import Session
 from typing import Callable, Optional
 from http.cookiejar import CookieJar
 from threading import Lock
+from db import Database
 import requests
 import json
 import logging
@@ -86,7 +87,7 @@ class Crawler:
 
 
 class EuroNewsCrawler(Crawler):
-    def __init__(self, max_requests, working_dir):
+    def __init__(self, database: Database, max_requests, working_dir):
         super().__init__(max_requests)
         self.response_handlers = []
         assert os.path.isdir(working_dir), "path is not a directory"
@@ -107,6 +108,7 @@ class EuroNewsCrawler(Crawler):
             #Website("euronews.com", language="per", default_query_params={"limit": 50}),
             #Website("euronews.com", language="arabic", default_query_params={"limit": 50}),  #Tonspur passt nicht
         ]
+        self.db = database
         self.load_progress()
 
     def start(self, start_crawling_dates=None):
@@ -125,35 +127,12 @@ class EuroNewsCrawler(Crawler):
     def persist_progress(self):
         logging.info("Persisting progress..")
         for website in self.websites:
-            file_path = os.path.join(self.working_dir, f"{website.language}.json")
-            with open(file_path, "w+") as f:
-                content = [self.convert_from_datetimerange(parsed) for parsed in website.queried_timeranges]
-                json.dump(content, f, indent=4)
+            self.db.store_website(website)
 
-    def convert_from_datetimerange(self, timerange):
-        if isinstance(timerange, datetimerange.DateTimeRange):
-            return {"start": timerange.get_start_time_str(), "end": timerange.get_end_time_str()}
-
-    def convert_to_datetimerange(self, timerange_list: list) -> list:
-        print(timerange_list)
-        result = []
-        for start_end_dict in timerange_list:
-            result.append(datetimerange.DateTimeRange(start_end_dict["start"], start_end_dict["end"]))
-        return result
 
     def load_progress(self):
         for website in self.websites:
-            file_path = os.path.join(self.working_dir, f"{website.language}.json")
-            if os.path.exists(file_path):
-                with open(file_path, "r") as f:
-                    try:
-                        website.queried_timeranges = self.convert_to_datetimerange(json.load(f))
-                    except json.decoder.JSONDecodeError as ex:
-                        logging.error(f"{file_path} {ex}")
-                        continue
-                logging.info(f"Loaded past progress for {website}")
-            else:
-                logging.info(f"No progress was saved for {website.url} - loading all articles")
+            website.queried_timeranges = self.db.load_website(website.language)
 
     def continue_crawling(self):
         for website in self.websites:
