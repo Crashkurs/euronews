@@ -97,18 +97,18 @@ class EuroNewsCrawler(Crawler):
         self.working_dir = working_dir
         self.websites = [
             # limit describes the number of articles fetched per request
-            #Website("euronews.com", default_query_params={"limit": 50}), #check
-            #Website("euronews.com", language="de", default_query_params={"limit": 50}), #check
-            #Website("euronews.com", language="fr", default_query_params={"limit": 50}), #check
-            #Website("euronews.com", language="it", default_query_params={"limit": 50}), #check
-            #Website("euronews.com", language="es", default_query_params={"limit": 50}), #check
-            #Website("euronews.com", language="pt", default_query_params={"limit": 50}), #check
-            #Website("euronews.com", language="ru", default_query_params={"limit": 50}), #check
+            Website("euronews.com", default_query_params={"limit": 50}), #check
+            Website("euronews.com", language="de", default_query_params={"limit": 50}), #check
+            Website("euronews.com", language="fr", default_query_params={"limit": 50}), #check
+            Website("euronews.com", language="it", default_query_params={"limit": 50}), #check
+            Website("euronews.com", language="es", default_query_params={"limit": 50}), #check
+            Website("euronews.com", language="pt", default_query_params={"limit": 50}), #check
+            Website("euronews.com", language="ru", default_query_params={"limit": 50}), #check
             Website("euronews.com", language="tr", default_query_params={"limit": 50}), #check?
-            #Website("euronews.com", language="gr", default_query_params={"limit": 50}), #check
-            #Website("euronews.com", language="hu", default_query_params={"limit": 50}), #check
-            #Website("euronews.com", language="per", default_query_params={"limit": 50}), #check
-            #Website("euronews.com", language="arabic", default_query_params={"limit": 50}), #check
+            Website("euronews.com", language="gr", default_query_params={"limit": 50}), #check
+            Website("euronews.com", language="hu", default_query_params={"limit": 50}), #check
+            Website("euronews.com", language="per", default_query_params={"limit": 50}), #check
+            Website("euronews.com", language="arabic", default_query_params={"limit": 50}), #check
         ]
         self.db = database
         self.load_progress()

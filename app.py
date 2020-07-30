@@ -37,7 +37,7 @@ if __name__ == '__main__':
     crawler.register_response_handler(processor.enqueue_response)
 
     # PageCrawler is responsible for actually crawling a single article and download text and audio
-    page_crawler = PageCrawler(db, 10)
+    page_crawler = PageCrawler(db, 20)
 
     schedule.every(1).hours.do(crawler.start)  # schedule for loading new articles in the api
     schedule.every(10).seconds.do(crawler.persist_progress)  # schedule for persisting crawling progress
