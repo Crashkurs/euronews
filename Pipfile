@@ -14,6 +14,8 @@ schedule = "*"
 lxml = "*"
 pytube3 = "*"
 tinydb = "*"
+youtube-dl = "*"
+ffmpeg = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.7"

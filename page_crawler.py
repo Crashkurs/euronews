@@ -1,60 +1,100 @@
+import youtube_dl
+
 from api_crawler import Crawler
 from db import Database
-from queue import Queue
 from lxml import html
-from threading import Lock
+from threading import BoundedSemaphore
 import requests
 import logging
-import pytube
 import os
-import asyncio
+from concurrent import futures
 
 
 class PageCrawler(Crawler):
+    youtube_url = "https://youtube.com/watch?v="
     xpath_video_url = "//div[@class='js-player-pfp']/@data-video-id"
-    xpath_article_content = "//div[contains(@class, 'c-article-content') and contains(@class, 'js-article-content article__content')]/p/text()"
+    xpath_article_content = "//div[contains(@class, 'c-article-content') and contains(@class, 'js-article-content') and "\
+                            "contains(@class,'article__content']/p/text()"
+    youtube_dl_properties = {
+        "extractaudio": True,
+        "format": "251",  # webm with high quality
+        "audioformat": "mp3",
+        "writesubtitles": True,
+        "writeautomaticsub": True,
+        "quiet": True,
+        "logger": logging.getLogger("youtube")
+    }
 
     def __init__(self, database: Database, max_requests):
         super().__init__(max_requests)
+        self.max_requests = max_requests
         self.db = database
-        self.lock = Lock()
+        self.lock = BoundedSemaphore(max_requests)
+        self.request_context = {}
 
     def crawl_next_pages(self):
-        logging.info(f"Crawling {self.page_queue.qsize()} pages..")
-        [print(x) for x in self.page_queue.queue]
-        article = self.db.get_article_to_crawl()
-        while article is not None:
-            url, output_dir = article
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101 Firefox/78.0"}
-            self.add_request("GET", url, lambda session, response: self.handle_crawl_response(output_dir, response),
-                             {}, headers)
-            article = self.db.get_article_to_crawl()
+        self.get_logger().info(f"Crawling next {self.lock._value} available pages..")
+        for i in range(self.lock._value):
+            # only start downloading an article if the semaphore has free capacity to reduce bloating the requests queue
+            if self.lock.acquire(blocking=False):
+                article = self.db.get_article_to_crawl()
+                if article is not None:
+                    id, language, url, output_dir = article
+                    headers = {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101 Firefox/78.0"}
+                    self.request_context[url] = (id, language, output_dir)
+                    self.add_request("GET", url,
+                                     self.handle_crawl_response,
+                                     {}, headers)
+                else:
+                    self.get_logger().info("No articles left to crawl")
 
-    def handle_crawl_response(self, output_dir: str, response: requests.Response):
-        self.store_response(output_dir, response)
+    def handle_crawl_response(self, session, response: requests.Response):
+        request = response.request
+        url = request.url
+        if url not in self.request_context:
+            self.get_logger().warning(f"{url} does not have a context")
+            return
+        id, language, output_dir = self.request_context[url]
+        del self.request_context[url]
+        self.store_response(id, language, output_dir, response)
         return response
 
-    def store_response(self, output_dir: str, response: requests.Response):
+    def store_response(self, id: str, language: str, output_dir: str, response: requests.Response):
         root_node = html.fromstring(response.content)
-        video_urls = root_node.xpath(self.xpath_video_url)
-        if len(video_urls) == 0:
+        video_ids = root_node.xpath(self.xpath_video_url)
+        if len(video_ids) == 0:
+            self.get_logger().debug("[%s] No video in article %s in dir %s", language, id, output_dir)
+            self.db.increment_crawled_article_status(id, language, 2)  # mark this article as finished in db
+            self.lock.release()
             return
         audio_dir = output_dir
         text_file = os.path.join(output_dir, "article.txt")
-        article_io = asyncio.run(self.store_text(root_node, text_file))
-        audio_io = asyncio.run(self.download_video(root_node, audio_dir))
+        with futures.ThreadPoolExecutor(max_workers=2) as executor:
+            text = executor.submit(self.store_text, id, language, root_node, text_file)
+            video = executor.submit(self.download_video, id, language, video_ids[0], audio_dir)
+            video.result()
+            text.result()
         return response
 
-    async def store_text(self, root, output_file):
-        article = "".join(root.xpath(self.xpath_article_content))
+    def store_text(self, id, language, root, output_file):
+        article = " ".join([x.strip() for x in root.xpath(self.xpath_article_content)])
+        self.get_logger().info(f"store {article}")
         with open(output_file, "w") as f:
             f.write(article)
+        self.db.increment_crawled_article_status(id, language)
 
-    async def download_video(self, root, output_dir):
-        video_urls = root.xpath(self.xpath_video_url)
-        if len(video_urls) > 0:
-            video_url = f"http://youtube.com/watch?v={video_urls[0]}"
-            print(f"Downloading {video_url}")
-            pytube.YouTube(video_url).streams\
-                .filter(only_audio=True).first()\
-                .download(output_path=output_dir, filename="audio")
+    def download_video(self, id: str, language: str, video_id: str, output_dir):
+        url = f"{self.youtube_url}{video_id}"
+        if language == "www":
+            language = "en"
+        download_properties = self.youtube_dl_properties.copy()
+        download_properties["outtmpl"] = f'{output_dir}/audio.mp3'
+        download_properties["subtitleslangs"] = [language]
+        tube = youtube_dl.YoutubeDL(download_properties)
+        tube.download([url])
+        self.lock.release()  # free semaphore to start another download
+        self.db.increment_crawled_article_status(id, language)
+
+    def get_logger(self):
+        return logging.getLogger("page_crawler")

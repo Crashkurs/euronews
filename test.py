@@ -1,9 +1,30 @@
 import requests
 from lxml import html, etree
+import youtube_dl
+import logging
+from functools import partial
 
-headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101 Firefox/78.0"}
-response = requests.get("https://www.euronews.com/2020/07/18/global-covid-19-roundup-footvolley-returns-to-rio-while-australia-suspends-parliament",
-             headers=headers)
+def download_progress(stream, bytes_left):
+    max_bytes = stream.filesize
+    logging.info(f"{(max_bytes-bytes_left)/1024}/{max_bytes/1024}")
 
-root = html.fromstring(response.content)
-print("".join(root.xpath("//div[contains(@class, 'c-article-content') and contains(@class, 'js-article-content article__content')]/p/text()")))
+def download_complete(id, language, stream, file):
+    logging.info(f"Downloaded {file}")
+
+
+video_url = "https://www.youtube.com/watch?v=TrdmCkmK3y4"
+language = "www"
+output_dir = "test"
+properties = {
+    "outtmpl": f'{output_dir}/audio2.%(ext)s',
+    "listformats": True,
+    "extractaudio": True,
+    "format": "250",
+    "audioformat": "mp3",
+    "writesubtitles": True,
+    "writeautomaticsub": True,
+    "subtitleslangs": ["en"]
+}
+tube = youtube_dl.YoutubeDL(properties)
+tube = tube.download([video_url])
+print("test")

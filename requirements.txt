@@ -4,4 +4,3 @@ threads
 datetimerange~=1.0.0
 schedule~=0.6.0
 lxml~=4.5.2
-pytube

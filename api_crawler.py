@@ -2,7 +2,8 @@ from txrequests import Session
 from typing import Callable, Optional
 from http.cookiejar import CookieJar
 from threading import Lock
-from db import Database
+from lxml import html
+from string import Template
 import requests
 import json
 import logging
@@ -14,8 +15,8 @@ import os
 
 class Website:
     def __init__(self, website: str, api_path: str = "api/timeline.json", language: str = "www", method: str = "GET",
-                 default_query_params: dict = None):
-        self.url = f"https://{language}.{website}"
+                 default_query_params: dict = None, default_data: dict = None, url_format="https://$language.$website"):
+        self.url = Template(url_format).substitute(language=language, website=website)
         self.api_path = api_path
         self.language = language
         self.method = method
@@ -24,6 +25,9 @@ class Website:
         self.default_query_params = default_query_params
         if default_query_params is None:
             self.default_query_params = dict()
+        self.default_data = default_data
+        if default_data is None:
+            self.default_data = dict()
         self.lock = Lock()
         self.sleep_time = 1  # the incrementing time to pause requests to this website after a bad response code
 
@@ -43,7 +47,6 @@ class Website:
             while current_timerange_index < len(self.queried_timeranges) - 1:
                 time_range = self.queried_timeranges[current_timerange_index + 1]
                 if time_range.is_intersection(self.queried_timeranges[current_timerange_index]):
-                    print(f"union {self.queried_timeranges[current_timerange_index]} and {time_range}")
                     # if the two time ranges intersect, build the union and remove old time ranges from the list
                     current_time_range = self.queried_timeranges.pop(current_timerange_index)
                     self.queried_timeranges.pop(current_timerange_index)
@@ -51,10 +54,9 @@ class Website:
                     # insert the union back into the list
                     self.queried_timeranges.insert(current_timerange_index, union_range)
                 else:
-                    print(f"dont union {self.queried_timeranges[current_timerange_index]} and {time_range}")
                     current_timerange_index += 1
 
-    def get_surrounding_timerange(self, time:datetime.datetime) -> Optional[datetimerange.DateTimeRange]:
+    def get_surrounding_timerange(self, time: datetime.datetime) -> Optional[datetimerange.DateTimeRange]:
         timerange: datetimerange.DateTimeRange
         for timerange in self.queried_timeranges:
             if timerange.__contains__(time):
@@ -70,13 +72,13 @@ class Crawler:
         self.session = Session(maxthreads=max_concurrent_requests)
 
     def add_website_request(self, website: Website, callback: Callable[[Session, requests.Response], requests.Response],
-                    query_params: dict):
-        self.add_request(website.method, website.api_url, callback, query_params, {})
+                            query_params: dict, data: dict):
+        self.add_request(website.method, website.api_url, callback, query_params, data)
 
     def add_request(self, method: str, url: str, callback: Callable[[Session, requests.Response], requests.Response],
-                    query_params: dict, headers: dict):
-        logging.debug(f"{method} {url} [params: {query_params}, headers: {headers}]")
-        self.session.request(method=method, url=url, params=query_params, headers=headers,
+                    query_params: dict, data: dict):
+        logging.debug(f"{method} {url} [params: {query_params}, data: {data}]")
+        self.session.request(method=method, url=url, params=query_params, data=data,
                              background_callback=callback)
 
     def add_cookies(self, cookies: CookieJar):
@@ -87,7 +89,7 @@ class Crawler:
 
 
 class EuroNewsCrawler(Crawler):
-    def __init__(self, database: Database, max_requests, working_dir):
+    def __init__(self, database, max_requests, working_dir):
         super().__init__(max_requests)
         self.response_handlers = []
         assert os.path.isdir(working_dir), "path is not a directory"
@@ -95,18 +97,18 @@ class EuroNewsCrawler(Crawler):
         self.working_dir = working_dir
         self.websites = [
             # limit describes the number of articles fetched per request
-            Website("euronews.com", default_query_params={"limit": 50}),  #Tonspur passt manchmal
-            #Website("euronews.com", language="de", default_query_params={"limit": 50}),  #Tonspur passt
-            #Website("euronews.com", language="fr", default_query_params={"limit": 50}),
-            #Website("euronews.com", language="it", default_query_params={"limit": 50}),
-            #Website("euronews.com", language="es", default_query_params={"limit": 50}),
-            #Website("euronews.com", language="pt", default_query_params={"limit": 50}),
-            #Website("euronews.com", language="ru", default_query_params={"limit": 50}),
-            #Website("euronews.com", language="tr", default_query_params={"limit": 50}),  #keine Tonspur
-            #Website("euronews.com", language="qr", default_query_params={"limit": 50}),
-            #Website("euronews.com", language="hu", default_query_params={"limit": 50}),  #Tonspur passt
-            #Website("euronews.com", language="per", default_query_params={"limit": 50}),
-            #Website("euronews.com", language="arabic", default_query_params={"limit": 50}),  #Tonspur passt nicht
+            # Website("euronews.com", default_query_params={"limit": 50}),
+            Website("euronews.com", language="de", default_query_params={"limit": 50}),
+            # Website("euronews.com", language="fr", default_query_params={"limit": 50}),
+            # Website("euronews.com", language="it", default_query_params={"limit": 50}),
+            # Website("euronews.com", language="es", default_query_params={"limit": 50}),
+            # Website("euronews.com", language="pt", default_query_params={"limit": 50}),
+            # Website("euronews.com", language="ru", default_query_params={"limit": 50}),
+            # Website("euronews.com", language="tr", default_query_params={"limit": 50}),
+            # Website("euronews.com", language="qr", default_query_params={"limit": 50}),
+            # Website("euronews.com", language="hu", default_query_params={"limit": 50}),
+            # Website("euronews.com", language="per", default_query_params={"limit": 50}),
+            # Website("euronews.com", language="arabic", default_query_params={"limit": 50}),
         ]
         self.db = database
         self.load_progress()
@@ -114,7 +116,7 @@ class EuroNewsCrawler(Crawler):
     def start(self, start_crawling_dates=None):
         if start_crawling_dates is None:
             start_crawling_dates = []
-        logging.info("Start crawling newest articles...")
+        logging.info("Starting crawler...")
         for website in self.websites:
             for start_date in start_crawling_dates:
                 website.update_queried_timestamps(datetimerange.DateTimeRange(start_date, start_date))
@@ -125,10 +127,9 @@ class EuroNewsCrawler(Crawler):
         self.response_handlers.append(handler)
 
     def persist_progress(self):
-        logging.info("Persisting progress..")
+        logging.debug("Persisting progress of websites..")
         for website in self.websites:
             self.db.store_website(website)
-
 
     def load_progress(self):
         for website in self.websites:
@@ -149,7 +150,7 @@ class EuroNewsCrawler(Crawler):
         after = int(date_upper_limit.replace(tzinfo=datetime.timezone.utc).timestamp())
         params = {"after": after}
         logging.debug(f"[{website.language}] Continue searching articles older than {date_upper_limit}")
-        self.add_website_request(website, query_params=params, callback=self.process_response)
+        self.add_website_request(website, query_params=params, callback=self.process_response, data=website.default_data)
 
     def create_website_request(self, website: Website):
         # start a request for the newest articles
@@ -158,12 +159,13 @@ class EuroNewsCrawler(Crawler):
         self.continue_website_crawling_after_time(website, now)
 
     def add_website_request(self, website: Website, callback: Callable[[dict, requests.Response], requests.Response],
-                    query_params: dict = None):
+                            query_params: dict = None, data: dict = None):
         if query_params is None:
             query_params = {}
         default_query_params = website.default_query_params.copy()
         default_query_params.update(query_params)  # overwrite default headers with given ones
-        super().add_website_request(website, lambda session, response: callback(default_query_params, response), default_query_params)
+        super().add_website_request(website, lambda session, response: callback(default_query_params, response),
+                                    default_query_params, data)
 
     def process_response(self, query_params: dict, response: requests.Response) -> requests.Response:
         website: Optional[Website] = self.get_website(response.request)
@@ -180,7 +182,6 @@ class EuroNewsCrawler(Crawler):
             return response
         else:
             website.sleep_time = 1
-        # handle response
         content = json.loads(response.content)
         if len(content) > 0:
             logging.debug(f"Loaded {len(content)} articles from {website.api_url}")

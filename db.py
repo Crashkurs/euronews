@@ -1,8 +1,8 @@
 import os
 import logging
 from typing import Optional, Tuple
-
 from tinydb import TinyDB, Query
+from tinydb.operations import add, set
 from datetimerange import DateTimeRange
 from api_crawler import Website
 from threading import Lock
@@ -13,7 +13,7 @@ class Database:
     article_type = "article"
 
     def __init__(self, working_dir: str):
-        assert os.path.isdir(working_dir), "no working directory given"
+        assert os.path.isdir(working_dir), "working directory does not exist or is not valid"
         self.storage_file = os.path.join(working_dir, "db.json")
         self.db = TinyDB(self.storage_file)
         self.lock = Lock()
@@ -23,58 +23,76 @@ class Database:
             website_query = self.create_website_query(website.language)
             obj = self.create_website_object(website)
             obj["time_ranges"] = self.convert_from_datetime_range(website.queried_timeranges)
-            if any(self.db.search(website_query)):
-                self.db.update(obj, website_query)
-            else:
-                self.db.insert(obj)
+            self.get_website_db().upsert(obj, website_query)
 
-    def load_website(self, language: str) -> list[DateTimeRange]:
+    def load_website(self, language: str) -> list:
         with self.lock:
             website_query = self.create_website_query(language)
-            found_objects = self.db.search(website_query)
+            found_objects = self.get_website_db().search(website_query)
             if len(found_objects) > 1:
                 logging.error(f"language {language} has multiple websites stored in db")
             if any(found_objects):
-                return self.convert_to_datetime_range(found_objects[0]["time_ranges"])
+                result = self.convert_to_datetime_range(found_objects[0]["time_ranges"])
+                logging.info(f"Continue language {language} after {result}")
+                return result
             else:
                 return []
 
     def store_article(self, article_id: str, language: str, full_url: str, article_dir: str):
         with self.lock:
             article_query = self.create_article_query(article_id, language)
-            if any(self.db.search(article_query)):  # skip this article if we already found it in the past
+            articles = self.db.table("articles")
+            if any(articles.search(article_query)):  # skip this article if we already found it in the past
                 return
             obj = self.create_article_object(article_id, language)
             obj["full_url"] = full_url
             obj["crawl_status"] = 0
             obj["article_dir"] = article_dir
-            self.db.insert(obj)
+            articles.insert(obj)
 
-    def get_article_to_crawl(self) -> Optional[Tuple[str, str]]:
+    def get_article_to_crawl(self) -> Optional[Tuple[str, str, str, str]]:
         """
-        Returns a tuple with the url and the storage dir of an article to crawl if possible, else None.
+        Returns a tuple with the id, language, url and storage directory an article to crawl if possible, else None.
         As a sideeffect, it updates the status for this article so it does not get crawled again
-        :return: a tuple of url and file disk dir or None if no article could be found
+        :return: a tuple of (id, language, url, storage_dir) or None if no article could be found
         """
         with self.lock:
             article_query = Query()
-            found_articles = self.db.search(
+            articles = self.get_article_db()
+            found_articles = articles.search(
                 (article_query.type == self.article_type) & (article_query.crawl_status == 0))
             if len(found_articles) > 0:
                 article = found_articles[0]
-                article_query = self.create_article_query(article["id"], article["language"])
-                self.db.update({"crawl_status": 1}, article_query)
-                return article["full_url"], article["article_dir"]
+                id = article["id"]
+                language = article["language"]
+                article_query = self.create_article_query(id, language)
+                articles.update(set("crawl_status", 1), article_query)
+                return id, language, article["full_url"], article["article_dir"]
             return None
 
-    def set_stored_article_to_crawled(self, article_id: str, language: str):
+    def increment_crawled_article_status(self, article_id: str, language: str, amount: int = 1):
         with self.lock:
-            article_query = self.create_article_query(article_id, language)
-            found_objects = self.db.search(article_query)
+            article_query = Query()
+            article_query = (article_query.type == self.article_type) & (article_query.crawl_status >= 1) \
+                            & (article_query.id == article_id) & (article_query.language == language)
+            articles = self.get_article_db()
+            found_objects = articles.search(article_query)
             if len(found_objects) > 1:
                 logging.error(f"language {language} has multiple articles with id {article_id} stored in db")
             if any(found_objects):
-                self.db.update({"crawl_status": 2}, article_query)
+                articles.update(add("crawl_status", amount), article_query)
+
+    def reset_crawled_article_status(self):
+        """
+        Resets the 'crawl_status' flag of all articles who were being downloaded before the last shutdown and did not
+        finish.
+        """
+        with self.lock:
+            articles = self.get_article_db()
+            article_query = Query()
+            article_query = (article_query.type == self.article_type) & (article_query.crawl_status >= 1) \
+                            & (article_query.crawl_status < 4)
+            articles.update(set("crawl_status", 1), article_query)
 
     def create_article_object(self, article_id: str, language: str) -> dict:
         return {
@@ -85,7 +103,7 @@ class Database:
 
     def create_article_query(self, article_id: str, language: str) -> Query:
         query = Query()
-        query = (query.type == self.article_type) & (query.article_id == article_id) & (query.language == language)
+        query = (query.type == self.article_type) & (query.id == article_id) & (query.language == language)
         return query
 
     def create_website_object(self, website: Website):
@@ -98,6 +116,12 @@ class Database:
         query = Query()
         query = (query.type == self.website_type) & (query.language == language)
         return query
+
+    def get_article_db(self):
+        return self.db.table("articles")
+
+    def get_website_db(self):
+        return self.db.table("websites")
 
     @staticmethod
     def convert_from_datetime_range(time_ranges):
