@@ -78,7 +78,7 @@ class Crawler:
     def add_request(self, method: str, url: str, callback: Callable[[Session, requests.Response], requests.Response],
                     query_params: dict, data: dict):
         logging.debug(f"{method} {url} [params: {query_params}, data: {data}]")
-        self.session.request(method=method, url=url, params=query_params, data=data,
+        self.session.request(method=method, url=url, params=query_params, #data=data,
                              background_callback=callback)
 
     def add_cookies(self, cookies: CookieJar):
@@ -97,18 +97,18 @@ class EuroNewsCrawler(Crawler):
         self.working_dir = working_dir
         self.websites = [
             # limit describes the number of articles fetched per request
-            # Website("euronews.com", default_query_params={"limit": 50}),
-            Website("euronews.com", language="de", default_query_params={"limit": 50}),
-            # Website("euronews.com", language="fr", default_query_params={"limit": 50}),
-            # Website("euronews.com", language="it", default_query_params={"limit": 50}),
-            # Website("euronews.com", language="es", default_query_params={"limit": 50}),
-            # Website("euronews.com", language="pt", default_query_params={"limit": 50}),
-            # Website("euronews.com", language="ru", default_query_params={"limit": 50}),
-            # Website("euronews.com", language="tr", default_query_params={"limit": 50}),
-            # Website("euronews.com", language="qr", default_query_params={"limit": 50}),
-            # Website("euronews.com", language="hu", default_query_params={"limit": 50}),
-            # Website("euronews.com", language="per", default_query_params={"limit": 50}),
-            # Website("euronews.com", language="arabic", default_query_params={"limit": 50}),
+            #Website("euronews.com", default_query_params={"limit": 50}), #check
+            #Website("euronews.com", language="de", default_query_params={"limit": 50}), #check
+            #Website("euronews.com", language="fr", default_query_params={"limit": 50}), #check
+            #Website("euronews.com", language="it", default_query_params={"limit": 50}), #check
+            #Website("euronews.com", language="es", default_query_params={"limit": 50}), #check
+            #Website("euronews.com", language="pt", default_query_params={"limit": 50}), #check
+            #Website("euronews.com", language="ru", default_query_params={"limit": 50}), #check
+            Website("euronews.com", language="tr", default_query_params={"limit": 50}), #check?
+            #Website("euronews.com", language="gr", default_query_params={"limit": 50}), #check
+            #Website("euronews.com", language="hu", default_query_params={"limit": 50}), #check
+            #Website("euronews.com", language="per", default_query_params={"limit": 50}), #check
+            #Website("euronews.com", language="arabic", default_query_params={"limit": 50}), #check
         ]
         self.db = database
         self.load_progress()
@@ -197,7 +197,6 @@ class EuroNewsCrawler(Crawler):
             website.update_queried_timestamps(datetimerange.DateTimeRange(min_time, max_time))
             surrounding_timerange = website.get_surrounding_timerange(min_time)
             if surrounding_timerange is not None:
-                time.sleep(3)
                 self.continue_website_crawling_after_time(website, surrounding_timerange.start_datetime)
             else:
                 logging.error(f"Could not find next timestamp to query for ({website})")

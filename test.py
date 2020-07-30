@@ -1,30 +1,30 @@
 import requests
 from lxml import html, etree
+import json
 import youtube_dl
-import logging
-from functools import partial
+import re
 
-def download_progress(stream, bytes_left):
-    max_bytes = stream.filesize
-    logging.info(f"{(max_bytes-bytes_left)/1024}/{max_bytes/1024}")
+xpath_video_url = ["//div[@class='js-player-pfp']/@data-video-id",
+                   "//script[re:match(text(), 'contentUrl')]/text()"]
+xpath_text = "//div[contains(@class, 'c-article-content') or contains(@class, 'js-article-content') or "\
+                            "contains(@class,'article__content')]/p/text()"
+regex_video_url = [""]
+response = requests.get("https://tr.euronews.com/2020/07/30/bilisim-hukuk-uzman-prof-dr-yaman-akdeniz-sosyal-medya-duzenlemesini-euronews-e-degerlendi")
 
-def download_complete(id, language, stream, file):
-    logging.info(f"Downloaded {file}")
+root = html.fromstring(response.content)
+for xpath in xpath_video_url:
+    print(xpath)
+    found = root.xpath(xpath, namespaces={"re": "http://exslt.org/regular-expressions"})
+    if len(found) > 0:
+        print(found)
+        article = json.loads(found[0])
+        print(article)
+        url = article["@graph"][0]["video"]["embedUrl"]
+        print(url)
+        matching_pos = re.search("[^/]+$", url)
+        id = url[matching_pos.start():matching_pos.end()]
+        yt_url = f"https://youtube.com/watch?v={id}"
+        print(id)
+        #youtube_dl.YoutubeDL().download([yt_url])
 
-
-video_url = "https://www.youtube.com/watch?v=TrdmCkmK3y4"
-language = "www"
-output_dir = "test"
-properties = {
-    "outtmpl": f'{output_dir}/audio2.%(ext)s',
-    "listformats": True,
-    "extractaudio": True,
-    "format": "250",
-    "audioformat": "mp3",
-    "writesubtitles": True,
-    "writeautomaticsub": True,
-    "subtitleslangs": ["en"]
-}
-tube = youtube_dl.YoutubeDL(properties)
-tube = tube.download([video_url])
-print("test")
+print(root.xpath(xpath_text))

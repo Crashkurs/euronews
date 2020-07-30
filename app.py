@@ -7,13 +7,20 @@ import schedule
 import time
 import os
 
+
+def log_downloaded_articles(db: Database):
+    db.log_downloaded_articles_count()
+
+
 if __name__ == '__main__':
-    logging.basicConfig(filename="crawler.log", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S",
-                        format="%(asctime)s [%(levelname)s]: %(message)s")
+    logging.basicConfig(  # filename="crawler.log",
+        level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S",
+        format="%(asctime)s [%(levelname)s]: %(message)s")
     logging.getLogger("schedule").setLevel(logging.WARN)
     logging.getLogger("page_crawler").setLevel(logging.INFO)
-    logging.getLogger("urllib3").setLevel(logging.DEBUG)
+    logging.getLogger("urllib3").setLevel(logging.INFO)
     logging.getLogger("youtube").setLevel(logging.ERROR)
+    logging.getLogger("asyncio").setLevel(logging.WARN)
     working_dir = os.path.join(".", "data")
     os.makedirs(working_dir, exist_ok=True)
 
@@ -35,6 +42,7 @@ if __name__ == '__main__':
     schedule.every(1).hours.do(crawler.start)  # schedule for loading new articles in the api
     schedule.every(10).seconds.do(crawler.persist_progress)  # schedule for persisting crawling progress
     schedule.every(5).seconds.do(page_crawler.crawl_next_pages)  # schedule for crawling articles and their videos
+    schedule.every(1).minutes.do(lambda: log_downloaded_articles(db))  # schedule for crawling articles and their videos
 
     try:
         while True:
