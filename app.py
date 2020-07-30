@@ -13,7 +13,7 @@ def log_downloaded_articles(db: Database):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(  # filename="crawler.log",
+    logging.basicConfig(filename="crawler.log",
         level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S",
         format="%(asctime)s [%(levelname)s]: %(message)s")
     logging.getLogger("schedule").setLevel(logging.WARN)
