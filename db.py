@@ -91,7 +91,7 @@ class Database:
             articles = self.get_article_db()
             article_query = Query()
             article_query = (article_query.type == self.article_type) & (article_query.crawl_status >= 1) \
-                            & (article_query.crawl_status < 4)
+                            & (article_query.crawl_status < 3)
             articles.update(set("crawl_status", 1), article_query)
 
     def log_downloaded_articles_count(self):
