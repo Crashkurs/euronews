@@ -13,8 +13,8 @@ def log_downloaded_articles(db: Database):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(#filename="crawler.log",
-        level=logging.DEBUG, datefmt="%Y-%m-%d %H:%M:%S",
+    logging.basicConfig(filename="crawler.log",
+        level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S",
         format="%(asctime)s [%(levelname)s]: %(message)s")
     logging.getLogger("schedule").setLevel(logging.WARN)
     logging.getLogger("page_crawler").setLevel(logging.INFO)
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     crawler.register_response_handler(processor.enqueue_response)
 
     # PageCrawler is responsible for actually crawling a single article and download text and audio
-    page_crawler = PageCrawler(db, 20)
+    page_crawler = PageCrawler(db, 10)
 
     schedule.every(1).hours.do(crawler.start)  # schedule for loading new articles in the api
     schedule.every(10).seconds.do(crawler.persist_progress)  # schedule for persisting crawling progress
