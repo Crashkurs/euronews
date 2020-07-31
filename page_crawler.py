@@ -150,7 +150,8 @@ class PageCrawler(Crawler):
         if response.status_code != 200:
             return
         with open(os.path.join(output_dir, "audio.mp3"), "w") as f:
-            f.write(response.content)
+            content = response.content.decode(encoding="utf-8")
+            f.write(content)
 
     def get_logger(self):
         return logging.getLogger("page_crawler")
