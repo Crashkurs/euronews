@@ -6,6 +6,8 @@ from tinydb.operations import add, set
 from datetimerange import DateTimeRange
 from api_crawler import Website
 from threading import Lock
+from tinydb.storages import JSONStorage
+from tinydb.middlewares import CachingMiddleware
 
 
 class Database:
@@ -15,7 +17,7 @@ class Database:
     def __init__(self, working_dir: str):
         assert os.path.isdir(working_dir), "working directory does not exist or is not valid"
         self.storage_file = os.path.join(working_dir, "db.json")
-        self.db = TinyDB(self.storage_file)
+        self.db = TinyDB(self.storage_file, storage=CachingMiddleware(JSONStorage))
         self.lock = Lock()
 
     def store_website(self, website: Website):
