@@ -54,14 +54,18 @@ class PageCrawler(Crawler):
                     return
 
     def handle_crawl_response(self, session, response: requests.Response):
-        request = response.request
-        url = request.url
-        if url not in self.request_context:
-            self.get_logger().warning(f"{url} does not have a context")
-            return
-        id, language, output_dir = self.request_context[url]
-        del self.request_context[url]
-        self.store_response(id, language, output_dir, response)
+Han        try:
+            request = response.request
+            url = request.url
+            if url not in self.request_context:
+                self.get_logger().warning(f"{url} does not have a context")
+                return
+            id, language, output_dir = self.request_context[url]
+            del self.request_context[url]
+            self.store_response(id, language, output_dir, response)
+        except Exception as e:
+            self.get_logger().exception(e)
+        self.lock.release()
         return response
 
     def store_response(self, id: str, language: str, output_dir: str, response: requests.Response):
@@ -74,7 +78,6 @@ class PageCrawler(Crawler):
         if len(video_ids) == 0:
             self.get_logger().debug("[%s] No video in article %s in dir %s", language, id, output_dir)
             self.db.increment_crawled_article_status(id, language, 2)  # mark this article as finished in db
-            self.lock.release()
             return
         audio_dir = output_dir
         text_file = os.path.join(output_dir, "article.txt")
@@ -128,7 +131,6 @@ class PageCrawler(Crawler):
             else:
                 self.get_logger().debug(f"Youtube download of {video_id}")
                 self.youtube_download(language, video_id, output_dir)
-            self.lock.release()  # free semaphore to start another download
             self.db.increment_crawled_article_status(id, language)
         except Exception as e:
             self.get_logger().exception(e)
