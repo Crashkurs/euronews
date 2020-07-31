@@ -54,7 +54,7 @@ class PageCrawler(Crawler):
                     return
 
     def handle_crawl_response(self, session, response: requests.Response):
-Han        try:
+        try:
             request = response.request
             url = request.url
             if url not in self.request_context:
