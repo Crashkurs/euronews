@@ -133,6 +133,7 @@ class PageCrawler(Crawler):
                 self.youtube_download(language, video_id, output_dir)
             self.db.increment_crawled_article_status(id, language)
         except Exception as e:
+            self.get_logger().error(f"[{language}] Exception while trying to download video {video_id}")
             self.get_logger().exception(e)
 
     def youtube_download(self, language, video_id, output_dir):
