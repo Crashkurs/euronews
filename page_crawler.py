@@ -51,6 +51,7 @@ class PageCrawler(Crawler):
                 else:
                     self.get_logger().info("No articles left to crawl")
                     self.lock.release()
+		    return
 
     def handle_crawl_response(self, session, response: requests.Response):
         request = response.request
