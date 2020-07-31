@@ -149,9 +149,8 @@ class PageCrawler(Crawler):
         response = requests.get(video_url)
         if response.status_code != 200:
             return
-        with open(os.path.join(output_dir, "audio.mp3"), "w") as f:
-            content = response.content.decode(encoding="utf-8")
-            f.write(content)
+        with open(os.path.join(output_dir, "audio.mp3"), "wb") as f:
+            f.write(response.content)
 
     def get_logger(self):
         return logging.getLogger("page_crawler")
