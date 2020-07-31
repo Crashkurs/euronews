@@ -117,7 +117,7 @@ class PageCrawler(Crawler):
                     matching_pos = re.search("[^/]+$", json_content)
                     if matching_pos is not None:
                         return json_content[matching_pos.start():matching_pos.end()]
-                if "contentUrl" in json_content and len(json_content["contentUrl"] > 0):
+                if "contentUrl" in json_content and len(json_content["contentUrl"]) > 0:
                     return json_content["contentUrl"]
 
         return video_ids[0]
