@@ -4,6 +4,7 @@ import os
 import json
 import logging
 import asyncio
+from concurrent import futures
 
 
 class ApiProcessor:
@@ -14,14 +15,16 @@ class ApiProcessor:
         self.db = database
 
     def enqueue_response(self, website: Website, response: dict):
-        asyncio.run(self.handle_response(website, response))
+        with futures.ThreadPoolExecutor(max_workers=2) as executor:
+            executor.submit(self.handle_response, website, response)
 
-    async def handle_response(self, website: Website, response: dict):
+    def handle_response(self, website: Website, response: dict):
         try:
             # the path of the article
             full_page_path = website.url + response["fullUrl"]
             storage_dir = self.get_persistent_file_path_for_response(website, response)
             os.makedirs(storage_dir, exist_ok=True)
+            assert os.access(storage_dir, os.W_OK), f"directory not writeable: {storage_dir}"
             self.db.store_article(response["id"], website.language, full_page_path,
                                   storage_dir)  # store information for the page crawler in db
             response_file = os.path.join(storage_dir, "meta.json")
