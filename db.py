@@ -84,7 +84,19 @@ class Database:
             if any(found_objects):
                 articles.update(add("crawl_status", amount), article_query)
 
-    def reset_crawled_article_status(self):
+    def reset_crawled_article_status(self, article_id: str, language: str):
+        with self.lock:
+            article_query = Query()
+            article_query = (article_query.type == self.article_type) & (article_query.crawl_status >= 1) \
+                            & (article_query.id == article_id) & (article_query.language == language)
+            articles = self.get_article_db()
+            found_objects = articles.search(article_query)
+            if len(found_objects) > 1:
+                logging.error(f"language {language} has multiple articles with id {article_id} stored in db")
+            if any(found_objects):
+                articles.update(set("crawl_status", 0), article_query)
+
+    def reset_crawled_articles_status(self):
         """
         Resets the 'crawl_status' flag of all articles who were being downloaded before the last shutdown and did not
         finish.
