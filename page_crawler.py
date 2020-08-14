@@ -23,8 +23,11 @@ class PageCrawler(Crawler):
         "audioformat": "mp3",
         "writesubtitles": True,
         "writeautomaticsub": True,
-        "quiet": True,
-        "logger": logging.getLogger("youtube")
+        #"quiet": True,
+        "logger": logging.getLogger("youtube"),
+        "source_address": "0.0.0.0",
+        "geo_verification_proxy": "",
+        "geo_bypass": True
     }
 
     def __init__(self, database: Database, max_requests):
