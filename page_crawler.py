@@ -135,6 +135,9 @@ class PageCrawler(Crawler):
                 self.get_logger().debug(f"Youtube download of {video_id}")
                 self.youtube_download(language, video_id, output_dir)
             self.db.increment_crawled_article_status(id, language)
+        except youtube_dl.utils.ExtractorError as ee:
+            self.db.reset_crawled_article_status(id, language)
+            self.get_logger().error(f"Could not open {self.youtube_url}{id} - maybe video is private")
         except Exception as e:
             self.db.reset_crawled_article_status(id, language)
             self.get_logger().exception(e)
