@@ -89,12 +89,13 @@ class Crawler:
 
 
 class EuroNewsCrawler(Crawler):
-    def __init__(self, database, max_requests, working_dir):
+    def __init__(self, database, max_database_size: int, max_requests, working_dir):
         super().__init__(max_requests)
         self.response_handlers = []
         assert os.path.isdir(working_dir), "path is not a directory"
         assert os.access(working_dir, os.W_OK), "directory not writeable"
         self.working_dir = working_dir
+        self.max_database_size = max_database_size
         self.websites = [
             # limit describes the number of articles fetched per request
             Website("euronews.com", default_query_params={"limit": 50}), #check
@@ -196,8 +197,12 @@ class EuroNewsCrawler(Crawler):
                     min_time = last_updated
             website.update_queried_timestamps(datetimerange.DateTimeRange(min_time, max_time))
             surrounding_timerange = website.get_surrounding_timerange(min_time)
+            article_count = self.db.get_not_downloaded_article_count()
             if surrounding_timerange is not None:
-                self.continue_website_crawling_after_time(website, surrounding_timerange.start_datetime)
+                if article_count < self.max_database_size:
+                    self.continue_website_crawling_after_time(website, surrounding_timerange.start_datetime)
+                else:
+                    logging.debug(f"Stop crawling api {website.api_url} for now because database size limit reached")
             else:
                 logging.error(f"Could not find next timestamp to query for ({website})")
         else:

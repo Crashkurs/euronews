@@ -9,7 +9,7 @@ import os
 
 
 def log_downloaded_articles(db: Database):
-    db.log_downloaded_articles_count()
+    db.log_downloadable_articles_count()
 
 
 if __name__ == '__main__':
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     db.reset_crawled_articles_status()  # restart downloads from previous session
 
     # EuroNewsCrawler is responsible for delivering article metadata to the ApiProcessor
-    crawler = EuroNewsCrawler(db, 4, working_dir)
+    crawler = EuroNewsCrawler(db, 1000, 1, working_dir)
     start_dates = None  # [datetime.datetime(year=2020, month=1, day=1), datetime.datetime(year=2019, month=1, day=1)]
     crawler.start(start_dates)
 
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     crawler.register_response_handler(processor.enqueue_response)
 
     # PageCrawler is responsible for actually crawling a single article and download text and audio
-    page_crawler = PageCrawler(db, 8)
+    page_crawler = PageCrawler(db, 1)
 
     schedule.every(1).hours.do(crawler.start)  # schedule for loading new articles in the api
     schedule.every(10).seconds.do(crawler.persist_progress)  # schedule for persisting crawling progress

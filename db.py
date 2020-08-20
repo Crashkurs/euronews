@@ -83,6 +83,14 @@ class Database:
                 logging.error(f"language {language} has multiple articles with id {article_id} stored in db")
             if any(found_objects):
                 articles.update(add("crawl_status", amount), article_query)
+        self.delete_downloaded_articles()
+
+    def delete_downloaded_articles(self):
+        with self.lock:
+            article_query = Query()
+            article_query = (article_query.type == self.article_type) & (article_query.crawl_status == 3)
+            articles = self.get_article_db()
+            articles.remove(article_query)
 
     def reset_crawled_article_status(self, article_id: str, language: str):
         with self.lock:
@@ -95,6 +103,7 @@ class Database:
                 logging.error(f"language {language} has multiple articles with id {article_id} stored in db")
             if any(found_objects):
                 articles.update(set("crawl_status", 0), article_query)
+        self.delete_downloaded_articles()
 
     def reset_crawled_articles_status(self):
         """
@@ -108,12 +117,19 @@ class Database:
                             & (article_query.crawl_status < 3)
             articles.update(set("crawl_status", 1), article_query)
 
-    def log_downloaded_articles_count(self):
+    def get_not_downloaded_article_count(self):
         with self.lock:
             article_query = Query()
-            article_query = article_query.crawl_status == 3
+            article_query = article_query.crawl_status == 0
             articles = self.get_article_db()
-            logging.info(f"Currently downloaded articles: {articles.count(article_query)}")
+            return articles.count(article_query)
+
+    def log_downloadable_articles_count(self):
+        with self.lock:
+            article_query = Query()
+            article_query = article_query.crawl_status == 0
+            articles = self.get_article_db()
+            logging.info(f"Currently fetched articles ready to download: {articles.count(article_query)}")
 
     def create_article_object(self, article_id: str, language: str) -> dict:
         return {

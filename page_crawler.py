@@ -9,6 +9,7 @@ import logging
 import os
 import json
 import re
+import time
 from concurrent import futures
 
 
@@ -55,6 +56,7 @@ class PageCrawler(Crawler):
                     self.get_logger().info("No articles left to crawl")
                     self.lock.release()
                     return
+        time.sleep(2)
 
     def handle_crawl_response(self, session, response: requests.Response):
         try:
