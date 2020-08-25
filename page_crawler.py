@@ -64,6 +64,7 @@ class PageCrawler(Crawler):
             url = request.url
             if url not in self.request_context:
                 self.get_logger().warning(f"{url} does not have a context")
+                self.lock.release()
                 return
             id, language, output_dir = self.request_context[url]
             del self.request_context[url]
