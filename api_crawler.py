@@ -118,6 +118,10 @@ class EuroNewsCrawler(Crawler):
         if start_crawling_dates is None:
             start_crawling_dates = []
         logging.info("Starting crawler...")
+        article_count = self.db.get_not_downloaded_article_count()
+        if article_count >= self.max_database_size:
+            logging.info(f"No fetching of new articles because the database is still big enough")
+            return
         for website in self.websites:
             for start_date in start_crawling_dates:
                 website.update_queried_timestamps(datetimerange.DateTimeRange(start_date, start_date))

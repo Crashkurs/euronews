@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     schedule.every(1).hours.do(crawler.start)  # schedule for loading new articles in the api
     schedule.every(10).seconds.do(crawler.persist_progress)  # schedule for persisting crawling progress
-    schedule.every(10).seconds.do(page_crawler.crawl_next_pages)  # schedule for crawling articles and their videos
+    schedule.every(20).seconds.do(page_crawler.crawl_next_pages)  # schedule for crawling articles and their videos
     schedule.every(1).minutes.do(lambda: log_downloaded_articles(db))  # schedule for crawling articles and their videos
 
     try:
