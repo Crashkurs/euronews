@@ -21,11 +21,14 @@ class Database:
         self.lock = Lock()
 
     def store_website(self, website: Website):
-        with self.lock:
-            website_query = self.create_website_query(website.language)
-            obj = self.create_website_object(website)
-            obj["time_ranges"] = self.convert_from_datetime_range(website.queried_timeranges)
-            self.get_website_db().upsert(obj, website_query)
+        try:
+            with self.lock:
+                website_query = self.create_website_query(website.language)
+                obj = self.create_website_object(website)
+                obj["time_ranges"] = self.convert_from_datetime_range(website.queried_timeranges)
+                self.get_website_db().upsert(obj, website_query)
+        except Exception as e:
+            logging.exception(e)
 
     def load_website(self, language: str) -> list:
         with self.lock:
