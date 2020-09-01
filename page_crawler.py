@@ -28,7 +28,11 @@ class PageCrawler(Crawler):
         "logger": logging.getLogger("youtube"),
         "source_address": "0.0.0.0",
         "geo_verification_proxy": "",
-        "geo_bypass": True
+        "geo_bypass": True,
+        "ratelimit": "200K",
+        "noresizebuffer": True,
+        "sleep_interval": 4,
+        "max_sleep_interval": 6,
     }
 
     def __init__(self, database: Database, max_requests):
