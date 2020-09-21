@@ -26,14 +26,12 @@ class PageCrawler(Crawler):
         "writeautomaticsub": True,
         #"quiet": True,
         "logger": logging.getLogger("youtube"),
-        "source_address": "0.0.0.0",
-        "geo_verification_proxy": "",
-        "geo_bypass": True,
-        "buffersize": 5096,
-        "ratelimit": 200,
+        "buffersize": 128,
+        "ratelimit": 50000,
         "noresizebuffer": True,
         "sleep_interval": 4,
-        "max_sleep_interval": 6,
+        "max_sleep_interval": 15,
+        "cookiefile": "./cookies.txt"
     }
 
     def __init__(self, database: Database, max_requests):

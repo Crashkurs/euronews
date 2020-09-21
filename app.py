@@ -18,7 +18,7 @@ if __name__ == '__main__':
         format="%(asctime)s [%(levelname)s]: %(message)s")
     logging.getLogger("schedule").setLevel(logging.WARN)
     logging.getLogger("page_crawler").setLevel(logging.INFO)
-    logging.getLogger("urllib3").setLevel(logging.INFO)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("youtube").setLevel(logging.ERROR)
     logging.getLogger("asyncio").setLevel(logging.WARN)
     working_dir = os.path.join(".", "data")
@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     schedule.every(1).hours.do(crawler.start)  # schedule for loading new articles in the api
     schedule.every(10).seconds.do(crawler.persist_progress)  # schedule for persisting crawling progress
-    schedule.every(20).seconds.do(page_crawler.crawl_next_pages)  # schedule for crawling articles and their videos
+    schedule.every(60).seconds.do(page_crawler.crawl_next_pages)  # schedule for crawling articles and their videos
     schedule.every(1).minutes.do(lambda: log_downloaded_articles(db))  # schedule for crawling articles and their videos
 
     try:
