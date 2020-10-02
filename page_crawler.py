@@ -15,8 +15,9 @@ from concurrent import futures
 
 class PageCrawler(Crawler):
     youtube_url = "https://youtube.com/watch?v="
-    xpath_video_url = ["//div[@class='js-player-pfp']/@data-video-id", "//script[re:match(text(), 'contentUrl')]/text()"]
-    xpath_article_content = "//div[contains(@class, 'c-article-content') or contains(@class, 'js-article-content') or "\
+    xpath_video_url = ["//div[@class='js-player-pfp']/@data-video-id",
+                       "//script[re:match(text(), 'contentUrl')]/text()"]
+    xpath_article_content = "//div[contains(@class, 'c-article-content') or contains(@class, 'js-article-content') or " \
                             "contains(@class,'article__content')]/p/text()"
     youtube_dl_properties = {
         "extractaudio": True,
@@ -24,7 +25,7 @@ class PageCrawler(Crawler):
         "audioformat": "mp3",
         "writesubtitles": True,
         "writeautomaticsub": True,
-        #"quiet": True,
+        # "quiet": True,
         "logger": logging.getLogger("youtube"),
         "buffersize": 128,
         "ratelimit": 50000,
@@ -90,7 +91,8 @@ class PageCrawler(Crawler):
             return
         audio_dir = output_dir
         text_file = os.path.join(output_dir, "article.txt")
-        video_id = self.prepare_video_id(video_ids)
+        video_id = self.prepare_video_id(video_ids, audio_dir)
+        self.get_logger().info(f"[{language}] Downloading video for article {id}")
         with futures.ThreadPoolExecutor(max_workers=2) as executor:
             text = executor.submit(self.store_text, id, language, root_node, text_file)
             video = executor.submit(self.download_video, id, language, video_id, audio_dir)
@@ -109,9 +111,10 @@ class PageCrawler(Crawler):
         except Exception as e:
             self.get_logger().exception(e)
 
-    def prepare_video_id(self, video_ids: list):
+    def prepare_video_id(self, video_ids: list, audio_dir):
         for video_id in video_ids:
-            if len(video_id) == 11:  # if the id has length 11, it is a proper youtube video id and we can start to download
+            if len(
+                    video_id) == 11:  # if the id has length 11, it is a proper youtube video id and we can start to download
                 return video_id
             if "{" in video_id and "}" in video_id:  # if we have a json string, parse and search the content of it for the video id
                 json_content = json.loads(video_id)
@@ -128,7 +131,7 @@ class PageCrawler(Crawler):
                         return json_content[matching_pos.start():matching_pos.end()]
                 if "contentUrl" in json_content and len(json_content["contentUrl"]) > 0:
                     return json_content["contentUrl"]
-
+        self.get_logger().warning(f"Selecting wrong video id {video_ids[0]} for {audio_dir} - no solution present")
         return video_ids[0]
 
     def download_video(self, id: str, language: str, video_id: str, output_dir):
@@ -142,11 +145,11 @@ class PageCrawler(Crawler):
                 self.youtube_download(language, video_id, output_dir)
             self.db.increment_crawled_article_status(id, language)
         except youtube_dl.utils.ExtractorError as ee:
-            #self.db.reset_crawled_article_status(id, language)
+            # self.db.reset_crawled_article_status(id, language)
             self.get_logger().error(f"Could not open {self.youtube_url}{video_id} - maybe video is private")
         except youtube_dl.utils.DownloadError as de:
-            #self.db.reset_crawled_article_status(id, language)
-            self.get_logger().error(f"Error while downloading {self.youtube_url}{video_id}")
+            # self.db.reset_crawled_article_status(id, language)
+            self.get_logger().error(f"Error while downloading {self.youtube_url}{video_id} with article id {id}")
         except Exception as e:
             self.db.reset_crawled_article_status(id, language)
             self.get_logger().exception(e)
