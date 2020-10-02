@@ -113,10 +113,11 @@ class PageCrawler(Crawler):
 
     def prepare_video_id(self, video_ids: list, audio_dir):
         for video_id in video_ids:
-            if len(
-                    video_id) == 11:  # if the id has length 11, it is a proper youtube video id and we can start to download
+            # if the id has length 11, it is a proper youtube video id and we can start to download
+            if len(video_id) == 11:
                 return video_id
-            if "{" in video_id and "}" in video_id:  # if we have a json string, parse and search the content of it for the video id
+            # if we have a json string, parse and search the content of it for the video id
+            if "{" in video_id and "}" in video_id:
                 json_content = json.loads(video_id)
                 if "@graph" in json_content:
                     json_content = json_content["@graph"]
@@ -124,13 +125,13 @@ class PageCrawler(Crawler):
                     json_content = json_content[0]
                 if "video" in json_content:
                     json_content = json_content["video"]
+                if "contentUrl" in json_content and len(json_content["contentUrl"]) > 0:
+                    return json_content["contentUrl"]
                 if "embedUrl" in json_content and len(json_content["embedUrl"]) > 0:
                     json_content = json_content["embedUrl"]
                     matching_pos = re.search("[^/]+$", json_content)
                     if matching_pos is not None:
                         return json_content[matching_pos.start():matching_pos.end()]
-                if "contentUrl" in json_content and len(json_content["contentUrl"]) > 0:
-                    return json_content["contentUrl"]
         self.get_logger().warning(f"Selecting wrong video id {video_ids[0]} for {audio_dir} - no solution present")
         return video_ids[0]
 
