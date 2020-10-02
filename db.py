@@ -118,7 +118,7 @@ class Database:
             article_query = Query()
             article_query = (article_query.type == self.article_type) & (article_query.crawl_status >= 1) \
                             & (article_query.crawl_status < 3)
-            articles.update(set("crawl_status", 1), article_query)
+            articles.update(set("crawl_status", 0), article_query)
 
     def get_not_downloaded_article_count(self):
         with self.lock:
