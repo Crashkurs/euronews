@@ -38,15 +38,17 @@ class TestCrawler(PageCrawler):
 
     def extract_video_ids(self, root_node) -> list:
         result = super(TestCrawler, self).extract_video_ids(root_node)
-        logging.info(f"Extracted video ids: {result}")
+        for video in result:
+            obj = json.loads(video)
+            logging.info(json.dumps(obj, indent=4))
         return result
 
 
 def test_double_video_description():
-    url = "https://hu.euronews.com/2020/07/29/tobb-szazmillio-ember-ivovizellatasat-oldhatja-meg-ez-a-kutyu"
+    url = "https://per.euronews.com/2020/11/08/paris-performs-live-music-in-sign-language"
     response = requests.get(url)
     crawler = TestCrawler(TestDB(), 1)
-    crawler.request_context[url] = (id, "hu", ".")
+    crawler.request_context[url] = (id, "per", ".")
     crawler.lock.acquire()
     crawler.handle_crawl_response(None, response)
 

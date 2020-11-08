@@ -17,7 +17,8 @@ class PageCrawler(Crawler):
     youtube_url = "https://youtube.com/watch?v="
     xpath_video_url = ["//div[@class='js-player-pfp']/@data-video-id",
                        "//iframe[contains(concat(' ', @class, ' '), ' js-livestream-player ')]/@data-src",
-                       "//script[re:match(text(), 'contentUrl')]/text()"]
+                       "//div[@id='jsMainMediaArticle']/@data-content",
+                       "//div[@class='c-video-player']/@data-content"]
     xpath_article_content = "//div[contains(@class, 'c-article-content') or contains(@class, 'js-article-content') or " \
                             "contains(@class,'article__content')]/p/text()"
     youtube_dl_properties = {
@@ -121,23 +122,24 @@ class PageCrawler(Crawler):
             if len(video_id) == 11:
                 return video_id
             if "youtube.com/embed" in video_id:
-                return video_id
+                short_video_id = video_id.replace("http://", "")
+                short_video_id = short_video_id.replace("https://", "")
+                short_video_id = short_video_id.replace("www.", "")
+                short_video_id = short_video_id.replace("youtube.com/embed/", "")
+                return short_video_id
             # if we have a json string, parse and search the content of it for the video id
             if "{" in video_id and "}" in video_id:
                 json_content = json.loads(video_id)
                 if "@graph" in json_content:
                     json_content = json_content["@graph"]
+                if "videos" in json_content:
+                    json_content = json_content["videos"]
                 if len(json_content) > 0:
                     json_content = json_content[0]
-                if "video" in json_content:
-                    json_content = json_content["video"]
-                if "contentUrl" in json_content and len(json_content["contentUrl"]) > 0:
-                    return json_content["contentUrl"]
-                if "embedUrl" in json_content and len(json_content["embedUrl"]) > 0:
-                    json_content = json_content["embedUrl"]
-                    matching_pos = re.search("[^/]+$", json_content)
-                    if matching_pos is not None:
-                        return json_content[matching_pos.start():matching_pos.end()]
+                if "url" in json_content and len(json_content["url"]) > 0:
+                    return json_content["url"]
+                if "youtubeId" in json_content and len(json_content["youtubeId"]) > 0:
+                    return json_content["youtubeId"]
         self.get_logger().warning(f"Selecting wrong video id {video_ids[0]} for {audio_dir} - no solution present")
         return video_ids[0]
 
