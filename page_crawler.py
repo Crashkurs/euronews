@@ -93,6 +93,8 @@ class PageCrawler(Crawler):
         audio_dir = output_dir
         text_file = os.path.join(output_dir, "article.txt")
         video_id = self.prepare_video_id(video_ids, audio_dir)
+        if video_id is None:
+            return response
         self.get_logger().info(f"[{language}] Downloading video for article {id}")
         with futures.ThreadPoolExecutor(max_workers=2) as executor:
             text = executor.submit(self.store_text, id, language, root_node, text_file)
@@ -141,10 +143,10 @@ class PageCrawler(Crawler):
                     json_content = json_content[0]
                 if "url" in json_content and json_content["url"] is not None and len(json_content["url"]) > 0:
                     return json_content["url"]
-                if "youtubeId" in json_content and len(json_content["youtubeId"]) > 0:
+                if "youtubeId" in json_content and json_content["youtubeId"] is not None and len(json_content["youtubeId"]) > 0:
                     return json_content["youtubeId"]
-        self.get_logger().warning(f"Selecting wrong video id {video_ids[0]} for {audio_dir} - no solution present")
-        return video_ids[0]
+        self.get_logger().warning(f"Selecting no video id because no xpath was matching")
+        return None
 
     def download_video(self, id: str, language: str, video_id: str, output_dir):
         try:

@@ -45,7 +45,7 @@ class TestCrawler(PageCrawler):
 
 
 def test_double_video_description():
-    url = "https://per.euronews.com/2020/11/08/paris-performs-live-music-in-sign-language"
+    url = "https://per.euronews.com/2020/07/26/hurricane-hanna-disaster-declaration-texas"
     response = requests.get(url)
     crawler = TestCrawler(TestDB(), 1)
     crawler.request_context[url] = (id, "per", ".")
