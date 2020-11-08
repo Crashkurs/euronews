@@ -1,33 +1,54 @@
 import requests
 from lxml import html, etree
+from page_crawler import PageCrawler
+from db import Database
 import json
-import youtube_dl
-import re
+import logging
 
-xpath_video_url = ["//div[@class='js-player-pfp']/@data-video-id",
-                   "//script[re:match(text(), 'contentUrl')]/text()"]
-xpath_text = "//div[contains(@class, 'c-article-content') or contains(@class, 'js-article-content') or " \
-             "contains(@class,'article__content')]/p/text()"
-regex_video_url = [""]
-response = requests.get("https://pt.euronews.com/2019/07/02/presidente-filipe-nyusi-inicia-visita-de-estado-a-portugal")
+logging.basicConfig(level=logging.DEBUG, datefmt="%Y-%m-%d %H:%M:%S",
+        format="%(asctime)s [%(levelname)s]: %(message)s")
+logging.getLogger("page_crawler").setLevel(logging.DEBUG)
 
-root = html.fromstring(response.content)
-for xpath in xpath_video_url:
-    print(xpath)
-    found = root.xpath(xpath, namespaces={"re": "http://exslt.org/regular-expressions"})
-    if len(found) > 0 and xpath == xpath_video_url[1]:
-        print(len(found))
-        article = json.loads(found[0])
-        print(json.dumps(article, indent=4))
-        url = article["@graph"][0]["video"]["embedUrl"]
-        print(url)
-        matching_pos = re.search("[^/]+$", url)
-        id = url[matching_pos.start():matching_pos.end()]
-        yt_url = f"https://youtube.com/watch?v={id}"
-        print(id)
-        # youtube_dl.YoutubeDL().download([yt_url])
-    if len(found) > 0:
-        print(found[0])
-        break
+class TestDB(Database):
+    def __init__(self):
+        pass
 
-print(root.xpath(xpath_text))
+    def increment_crawled_article_status(self, article_id: str, language: str, amount: int = 1):
+        pass
+
+    def reset_crawled_article_status(self, article_id: str, language: str):
+        pass
+
+    def reset_crawled_articles_status(self):
+        pass
+
+
+class TestCrawler(PageCrawler):
+    def store_text(self, id, language, root, output_file):
+        logging.info(root)
+        return
+
+    def normal_download(self, video_url, output_dir):
+        logging.info("normal: " + video_url)
+        return
+
+    def youtube_download(self, language, video_id, output_dir):
+        logging.info("youtube: " + video_id)
+        return
+
+    def extract_video_ids(self, root_node) -> list:
+        result = super(TestCrawler, self).extract_video_ids(root_node)
+        logging.info(f"Extracted video ids: {result}")
+        return result
+
+
+def test_double_video_description():
+    url = "https://hu.euronews.com/2020/07/29/tobb-szazmillio-ember-ivovizellatasat-oldhatja-meg-ez-a-kutyu"
+    response = requests.get(url)
+    crawler = TestCrawler(TestDB(), 1)
+    crawler.request_context[url] = (id, "hu", ".")
+    crawler.lock.acquire()
+    crawler.handle_crawl_response(None, response)
+
+
+test_double_video_description()
