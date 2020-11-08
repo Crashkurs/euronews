@@ -16,6 +16,7 @@ from concurrent import futures
 class PageCrawler(Crawler):
     youtube_url = "https://youtube.com/watch?v="
     xpath_video_url = ["//div[@class='js-player-pfp']/@data-video-id",
+                       "//iframe[contains(concat(' ', @class, ' '), ' js-livestream-player ')]/@data-src",
                        "//script[re:match(text(), 'contentUrl')]/text()"]
     xpath_article_content = "//div[contains(@class, 'c-article-content') or contains(@class, 'js-article-content') or " \
                             "contains(@class,'article__content')]/p/text()"
@@ -80,11 +81,7 @@ class PageCrawler(Crawler):
 
     def store_response(self, id: str, language: str, output_dir: str, response: requests.Response):
         root_node = html.fromstring(response.content)
-        video_ids = []
-        for xpath_url in self.xpath_video_url:
-            extracted_ids = root_node.xpath(xpath_url, namespaces={"re": "http://exslt.org/regular-expressions"})
-            if len(extracted_ids) > 0:
-                video_ids = extracted_ids
+        video_ids = self.extract_video_ids(root_node)
         if len(video_ids) == 0:
             self.get_logger().debug("[%s] No video in article %s in dir %s", language, id, output_dir)
             self.db.increment_crawled_article_status(id, language, 2)  # mark this article as finished in db
@@ -99,6 +96,13 @@ class PageCrawler(Crawler):
             text.result()
             video.result()
         return response
+
+    def extract_video_ids(self, root_node) -> list:
+        for xpath_url in self.xpath_video_url:
+            extracted_ids = root_node.xpath(xpath_url, namespaces={"re": "http://exslt.org/regular-expressions"})
+            if len(extracted_ids) > 0:
+                return extracted_ids
+        return []
 
     def store_text(self, id, language, root, output_file):
         try:
@@ -115,6 +119,8 @@ class PageCrawler(Crawler):
         for video_id in video_ids:
             # if the id has length 11, it is a proper youtube video id and we can start to download
             if len(video_id) == 11:
+                return video_id
+            if "youtube.com/embed" in video_id:
                 return video_id
             # if we have a json string, parse and search the content of it for the video id
             if "{" in video_id and "}" in video_id:
