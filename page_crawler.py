@@ -65,6 +65,8 @@ class PageCrawler(Crawler):
         time.sleep(2)
 
     def handle_crawl_response(self, session, response: requests.Response):
+        language = ""
+        output_dir = ""
         try:
             request = response.request
             url = request.url
@@ -76,6 +78,7 @@ class PageCrawler(Crawler):
             del self.request_context[url]
             self.store_response(id, language, output_dir, response)
         except Exception as e:
+            self.get_logger().warning(f"Exception for language {language} in directory {output_dir}")
             self.get_logger().exception(e)
         self.lock.release()
         return response
@@ -136,7 +139,7 @@ class PageCrawler(Crawler):
                     json_content = json_content["videos"]
                 if len(json_content) > 0:
                     json_content = json_content[0]
-                if "url" in json_content and len(json_content["url"]) > 0:
+                if "url" in json_content and json_content["url"] is not None and len(json_content["url"]) > 0:
                     return json_content["url"]
                 if "youtubeId" in json_content and len(json_content["youtubeId"]) > 0:
                     return json_content["youtubeId"]
