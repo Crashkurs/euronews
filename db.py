@@ -17,7 +17,7 @@ class Database:
     def __init__(self, working_dir: str):
         assert os.path.isdir(working_dir), "working directory does not exist or is not valid"
         self.storage_file = os.path.join(working_dir, "db.json")
-        self.db = TinyDB(self.storage_file, storage=CachingMiddleware(JSONStorage))
+        self.db = TinyDB(self.storage_file, storage=CachingMiddleware(JSONStorage), indent=4)
         self.lock = Lock()
 
     def store_website(self, website: Website):
