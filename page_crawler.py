@@ -161,9 +161,11 @@ class PageCrawler(Crawler):
         except youtube_dl.utils.ExtractorError as ee:
             # self.db.reset_crawled_article_status(id, language)
             self.get_logger().error(f"Could not open {self.youtube_url}{video_id} - maybe video is private")
+            self.get_logger().exception(ee)
         except youtube_dl.utils.DownloadError as de:
             # self.db.reset_crawled_article_status(id, language)
             self.get_logger().error(f"Error while downloading {self.youtube_url}{video_id} with article id {id}")
+            self.get_logger().exception(de)
         except Exception as e:
             self.db.reset_crawled_article_status(id, language)
             self.get_logger().exception(e)
