@@ -49,9 +49,8 @@ class PageCrawler(Crawler):
         for i in range(self.lock._value):
             # only start downloading an article if the semaphore has free capacity to reduce bloating the requests queue
             if self.lock.acquire(blocking=False):
-                article = self.db.get_article_to_crawl()
-                if article is not None:
-                    id, language, url, output_dir = article
+                id, language, url, output_dir = self.db.get_article_to_crawl()
+                if id is not None:
                     headers = {
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101 Firefox/78.0"}
                     self.request_context[url] = (id, language, output_dir)
@@ -59,7 +58,7 @@ class PageCrawler(Crawler):
                                      self.handle_crawl_response,
                                      {}, headers)
                 else:
-                    self.get_logger().info("No articles left to crawl")
+                    self.get_logger().info(f"[{language}]No articles left to crawl")
                     self.lock.release()
                     return
         time.sleep(2)

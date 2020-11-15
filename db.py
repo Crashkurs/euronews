@@ -19,6 +19,7 @@ class Database:
         self.storage_file = os.path.join(working_dir, "db.json")
         self.db = TinyDB(self.storage_file, storage=CachingMiddleware(JSONStorage), indent=4)
         self.lock = Lock()
+        self.languages = ["www", "de", "fr", "it", "es", "pt", "ru", "tr", "gr", "hu", "per", "arabic"]
 
     def store_website(self, website: Website):
         try:
@@ -64,8 +65,11 @@ class Database:
         with self.lock:
             article_query = Query()
             articles = self.get_article_db()
+            language = self.languages.pop(0)
+            self.languages.append(language)
             found_articles = articles.search(
-                (article_query.type == self.article_type) & (article_query.crawl_status == 0))
+                (article_query.type == self.article_type) & (article_query.crawl_status == 0)
+                & (article_query.language == language))
             if len(found_articles) > 0:
                 article = found_articles[0]
                 id = article["id"]
@@ -73,7 +77,7 @@ class Database:
                 article_query = self.create_article_query(id, language)
                 articles.update(set("crawl_status", 1), article_query)
                 return id, language, article["full_url"], article["article_dir"]
-            return None
+            return None, language, None, None
 
     def increment_crawled_article_status(self, article_id: str, language: str, amount: int = 1):
         with self.lock:
