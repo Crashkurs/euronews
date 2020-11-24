@@ -79,6 +79,7 @@ class PageCrawler(Crawler):
         except Exception as e:
             self.get_logger().warning(f"Exception for language {language} in directory {output_dir}")
             self.get_logger().exception(e)
+            self.db.move_article_to_error_list(id, language)
         self.lock.release()
         return response
 

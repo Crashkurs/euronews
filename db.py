@@ -47,7 +47,7 @@ class Database:
     def store_article(self, article_id: str, language: str, full_url: str, article_dir: str):
         with self.lock:
             article_query = self.create_article_query(article_id, language)
-            articles = self.db.table("articles")
+            articles = self.get_article_db()
             if any(articles.search(article_query)):  # skip this article if we already found it in the past
                 return
             obj = self.create_article_object(article_id, language)
@@ -124,6 +124,21 @@ class Database:
                             & (article_query.crawl_status < 3)
             articles.update(set("crawl_status", 0), article_query)
 
+    def move_article_to_error_list(self, article_id: str, language: str):
+        with self.lock:
+            article_query = Query()
+            article_query = (article_query.type == self.article_type) & (article_query.crawl_status >= 1) \
+                            & (article_query.id == article_id) & (article_query.language == language)
+            articles = self.get_article_db()
+            found_objects = articles.search(article_query)
+            if len(found_objects) > 1:
+                logging.error(f"language {language} has multiple articles with id {article_id} stored in db")
+            if any(found_objects):
+                articles.remove(article_query)
+                for obj in found_objects:
+                    self.get_error_db().insert(obj)
+
+
     def get_not_downloaded_article_count(self):
         with self.lock:
             article_query = Query()
@@ -166,6 +181,9 @@ class Database:
 
     def get_website_db(self):
         return self.db.table("websites")
+
+    def get_error_db(self):
+        return self.db.table("download_errors")
 
     @staticmethod
     def convert_from_datetime_range(time_ranges):
