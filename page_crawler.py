@@ -3,7 +3,6 @@ import youtube_dl
 from api_crawler import Crawler
 from db import Database
 from lxml import html
-from threading import BoundedSemaphore
 import requests
 import logging
 import os
@@ -41,26 +40,20 @@ class PageCrawler(Crawler):
         super().__init__(max_requests)
         self.max_requests = max_requests
         self.db = database
-        self.lock = BoundedSemaphore(max_requests)
         self.request_context = {}
 
     def crawl_next_pages(self):
-        self.get_logger().debug(f"Crawling next {self.lock._value} available pages..")
-        for i in range(self.lock._value):
-            # only start downloading an article if the semaphore has free capacity to reduce bloating the requests queue
-            if self.lock.acquire(blocking=False):
-                id, language, url, output_dir = self.db.get_article_to_crawl()
-                if id is not None:
-                    headers = {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101 Firefox/78.0"}
-                    self.request_context[url] = (id, language, output_dir)
-                    self.add_request("GET", url,
-                                     self.handle_crawl_response,
-                                     {}, headers)
-                else:
-                    self.get_logger().info(f"[{language}]No articles left to crawl")
-                    self.lock.release()
-                    return
+        self.get_logger().debug(f"Crawling next available page..")
+        id, language, url, output_dir = self.db.get_article_to_crawl()
+        if id is not None:
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101 Firefox/78.0"}
+            self.request_context[url] = (id, language, output_dir)
+            self.add_request("GET", url,
+                                self.handle_crawl_response,
+                                {}, headers)
+        else:
+            self.get_logger().info(f"[{language}]No articles left to crawl")
+            return
         time.sleep(2)
 
     def handle_crawl_response(self, session, response: requests.Response):
@@ -71,7 +64,6 @@ class PageCrawler(Crawler):
             url = request.url
             if url not in self.request_context:
                 self.get_logger().warning(f"{url} does not have a context")
-                self.lock.release()
                 return
             id, language, output_dir = self.request_context[url]
             del self.request_context[url]
@@ -80,7 +72,6 @@ class PageCrawler(Crawler):
             self.get_logger().warning(f"Exception for language {language} in directory {output_dir}")
             self.get_logger().exception(e)
             self.db.move_article_to_error_list(id, language)
-        self.lock.release()
         return response
 
     def store_response(self, id: str, language: str, output_dir: str, response: requests.Response):
