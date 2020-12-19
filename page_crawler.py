@@ -36,37 +36,38 @@ class PageCrawler(Crawler):
         "cookiefile": "./cookies.txt"
     }
 
-    def __init__(self, database: Database, max_requests):
+    def __init__(self, database: Database, max_requests, limit_bandwidth=True):
         super().__init__(max_requests)
         self.max_requests = max_requests
         self.db = database
         self.request_context = {}
+        if not limit_bandwidth:
+            del self.youtube_dl_properties["ratelimit"]
 
     def crawl_next_pages(self):
         self.get_logger().debug(f"Crawling next available page..")
         id, language, url, output_dir = self.db.get_article_to_crawl()
         if id is not None:
             headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101 Firefox/78.0"}
-            self.request_context[url] = (id, language, output_dir)
+            tuple = (id, language, url, output_dir)
+            self.request_context[url] = tuple
             self.add_request("GET", url,
-                                self.handle_crawl_response,
-                                {}, headers)
+                             lambda session, response: self.handle_crawl_response(tuple, response),
+                             {}, headers)
         else:
             self.get_logger().info(f"[{language}]No articles left to crawl")
             return
         time.sleep(2)
 
-    def handle_crawl_response(self, session, response: requests.Response):
+    def handle_crawl_response(self, request_context, response: requests.Response):
         language = ""
         output_dir = ""
         try:
-            request = response.request
-            url = request.url
+            id, language, url, output_dir = request_context
             if url not in self.request_context:
                 self.get_logger().warning(f"{url} does not have a context")
                 self.crawl_next_pages()
                 return
-            id, language, output_dir = self.request_context[url]
             del self.request_context[url]
             self.store_response(id, language, output_dir, response)
         except Exception as e:
@@ -86,6 +87,7 @@ class PageCrawler(Crawler):
         text_file = os.path.join(output_dir, "article.txt")
         video_id = self.prepare_video_id(video_ids, audio_dir)
         if video_id is None:
+            self.get_logger().debug("[%s] No video in article %s in dir %s", language, id, output_dir)
             return response
         self.get_logger().info(f"[{language}] Downloading video for article {id}")
         with futures.ThreadPoolExecutor(max_workers=2) as executor:
@@ -135,7 +137,8 @@ class PageCrawler(Crawler):
                     json_content = json_content[0]
                 if "url" in json_content and json_content["url"] is not None and len(json_content["url"]) > 0:
                     return json_content["url"]
-                if "youtubeId" in json_content and json_content["youtubeId"] is not None and len(json_content["youtubeId"]) > 0:
+                if "youtubeId" in json_content and json_content["youtubeId"] is not None and len(
+                        json_content["youtubeId"]) > 0:
                     return json_content["youtubeId"]
         self.get_logger().warning(f"Selecting no video id because no xpath was matching")
         return None
