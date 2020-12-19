@@ -127,7 +127,7 @@ class Database:
     def move_article_to_error_list(self, article_id: str, language: str):
         with self.lock:
             article_query = Query()
-            article_query = (article_query.type == self.article_type) & (article_query.crawl_status >= 1) \
+            article_query = (article_query.type == self.article_type) \
                             & (article_query.id == article_id) & (article_query.language == language)
             articles = self.get_article_db()
             found_objects = articles.search(article_query)
