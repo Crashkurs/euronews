@@ -86,7 +86,7 @@ class PageCrawler(Crawler):
         if len(video_ids) == 0:
             self.get_logger().debug("[%s] No video in article %s in dir %s", language, id, output_dir)
             self.db.increment_crawled_article_status(id, language, 2)  # mark this article as finished in db
-            schedule.every(2).second.do(self.continue_with_next_page)
+            schedule.every(2).seconds.do(self.continue_with_next_page)
             return
         audio_dir = output_dir
         text_file = os.path.join(output_dir, "article.txt")
