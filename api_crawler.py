@@ -117,7 +117,7 @@ class EuroNewsCrawler(Crawler):
     def start(self, start_crawling_dates=None):
         if start_crawling_dates is None:
             start_crawling_dates = []
-        logging.info("Starting crawler...")
+        logging.info("Starting crawler for librivox api for new articles...")
         article_count = self.db.get_not_downloaded_article_count()
         if article_count >= self.max_database_size:
             logging.info(f"No fetching of new articles because the database is still big enough")
@@ -154,7 +154,7 @@ class EuroNewsCrawler(Crawler):
             date_upper_limit = datetime.datetime.now().replace(microsecond=0)
         after = int(date_upper_limit.replace(tzinfo=datetime.timezone.utc).timestamp())
         params = {"after": after}
-        logging.debug(f"[{website.language}] Continue searching articles older than {date_upper_limit}")
+        logging.info(f"[{website.language}] Continue searching articles older than {date_upper_limit}")
         self.add_website_request(website, query_params=params, callback=self.process_response, data=website.default_data)
 
     def create_website_request(self, website: Website):

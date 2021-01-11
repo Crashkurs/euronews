@@ -7,7 +7,7 @@ import requests
 import logging
 import os
 import json
-import re
+import schedule
 import time
 from concurrent import futures
 
@@ -43,6 +43,10 @@ class PageCrawler(Crawler):
         self.request_context = {}
         if not limit_bandwidth:
             del self.youtube_dl_properties["ratelimit"]
+
+    def continue_with_next_page(self):
+        self.crawl_next_pages()
+        return schedule.CancelJob
 
     def crawl_next_pages(self):
         self.get_logger().debug(f"Crawling next available page..")
@@ -82,6 +86,7 @@ class PageCrawler(Crawler):
         if len(video_ids) == 0:
             self.get_logger().debug("[%s] No video in article %s in dir %s", language, id, output_dir)
             self.db.increment_crawled_article_status(id, language, 2)  # mark this article as finished in db
+            schedule.every(2).second.do(self.continue_with_next_page)
             return
         audio_dir = output_dir
         text_file = os.path.join(output_dir, "article.txt")
