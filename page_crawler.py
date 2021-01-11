@@ -93,6 +93,7 @@ class PageCrawler(Crawler):
         video_id = self.prepare_video_id(video_ids, audio_dir)
         if video_id is None:
             self.get_logger().debug("[%s] No video in article %s in dir %s", language, id, output_dir)
+            schedule.every(2).seconds.do(self.continue_with_next_page)
             return response
         self.get_logger().info(f"[{language}] Downloading video for article {id}")
         with futures.ThreadPoolExecutor(max_workers=2) as executor:
