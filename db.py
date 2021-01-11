@@ -70,6 +70,7 @@ class Database:
             found_articles = articles.search(
                 (article_query.type == self.article_type) & (article_query.crawl_status == 0)
                 & (article_query.language == language))
+            logging.info(f"[{language}]Search article to download in db")
             if len(found_articles) > 0:
                 article = found_articles[0]
                 id = article["id"]
